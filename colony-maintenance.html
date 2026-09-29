@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Colony Maintenance</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f7f4;--card:#fff;--tx:#1d2420;--mu:#66706a;--ac:#1f8a4c;--rd:#c0392b;--bd:#dfe3dc}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141816;--card:#1e2421;--tx:#eef2ee;--mu:#9aa59e;--ac:#3fb872;--rd:#e5675a;--bd:#2f3833}}
+:root[data-theme="dark"]{--bg:#141816;--card:#1e2421;--tx:#eef2ee;--mu:#9aa59e;--ac:#3fb872;--rd:#e5675a;--bd:#2f3833}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px}
+.w{max-width:640px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:6px 0 12px}h2{font-size:15px;margin:0 0 8px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+input,button{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx)}
+input{min-width:0}
+button{cursor:pointer;background:var(--ac);color:#fff;border:0;font-weight:600}
+button.g{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+.r{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}.r>input{flex:1 1 90px}
+.st{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.st b{display:block;font-size:18px}.st span{color:var(--mu);font-size:12px}
+.h{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--bd)}
+.h .i{flex:1;min-width:0}.h .i small{color:var(--mu);display:block}
+.p{color:var(--ac)}.u{color:var(--rd)}
+.h button{padding:7px 9px;font-size:13px}
+.big{width:100%;margin-top:6px}
+.m{color:var(--mu);font-size:12px;margin:6px 0 0}
+</style></head><body><div class="w">
+<h1>🏘️ Colony Maintenance Hisab</h1>
+
+<div class="c"><div class="r"><input type="month" id="mo"><button class="g" onclick="print()" style="display:none"></button></div>
+<div class="st"><div><b id="sc">0</b><span>Mila</span></div><div><b id="sp">0</b><span>Baaki</span></div><div><b id="sh">0/0</b><span>Ghar ne diya</span></div></div>
+<p class="m" id="fund"></p></div>
+
+<div class="c"><h2>Is mahine ka charge (har ghar se)</h2><div id="ch"></div>
+<div class="r"><input id="cn" placeholder="Naam (jaise: Safai)"><input id="ca" type="number" placeholder="₹" style="max-width:90px"><button onclick="addCh()">Jodo</button></div>
+<p class="m">Har ghar ka total: <b id="tot">0</b></p></div>
+
+<div class="c"><h2>📨 WhatsApp Message</h2>
+<button class="big" onclick="grp()">Colony group me hisab bhejo (1 button)</button>
+<button class="big" onclick="qStart('all')" style="background:#128c7e">Sabko alag-alag message bhejo (paid + baaki)</button>
+<button class="big g" onclick="qStart('unpaid')">Sirf baaki walon ko yaad dilao</button>
+<p class="m" id="qi">Free WhatsApp ek saath sabko auto-send nahi karne deta, isliye har ghar ke liye button dabate jao, message pehle se likha hua khulega.</p></div>
+
+<div class="c"><h2>Ghar ki list</h2><div id="hl"></div></div>
+
+<div class="c"><h2>Naya ghar jodo</h2>
+<div class="r"><input id="hb" placeholder="Block (A)" style="max-width:90px"><input id="hr" placeholder="Room no."><input id="hn" placeholder="Naam"></div>
+<div class="r"><input id="hp" type="tel" placeholder="WhatsApp number (10 digit)"><button onclick="addH()">Jodo</button></div></div>
+
+<div class="c"><h2>Kharcha (maintenance me se)</h2><div id="ex"></div>
+<div class="r"><input id="en" placeholder="Kis cheez ka"><input id="ea" type="number" placeholder="₹" style="max-width:90px"><button onclick="addE()">Jodo</button></div></div>
+</div>
+<script>
+const K='colony_v1';let S={houses:[],months:{},exp:[]},M='',Q=[],qi=0;
+try{const x=localStorage.getItem(K);if(x)S=JSON.parse(x)}catch(e){}
+const $=id=>document.getElementById(id);
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const mon=()=>{if(!S.months[M])S.months[M]={ch:JSON.parse(JSON.stringify((S.months[Object.keys(S.months).sort().pop()]||{ch:[{n:'Pani',a:100}]}).ch)),paid:{}};return S.months[M]};
+const tot=()=>mon().ch.reduce((s,c)=>s+c.a,0);
+const lbl=h=>'Block '+h.b+' Room '+h.r;
+const mname=()=>new Date(M+'-01').toLocaleString('hi-IN',{month:'long',year:'numeric'});
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function render(){
+ const m=mon(),t=tot(),paid=S.houses.filter(h=>m.paid[h.id]).length;
+ const got=paid*t,pend=(S.houses.length-paid)*t;
+ $('sc').textContent='₹'+got;$('sp').textContent='₹'+pend;$('sh').textContent=paid+'/'+S.houses.length;
+ const water=S.houses.length?0:0;
+ const allGot=Object.keys(S.months).reduce((s,k)=>{const mm=S.months[k],tt=mm.ch.reduce((a,c)=>a+c.a,0);return s+S.houses.filter(h=>mm.paid[h.id]).length*tt},0);
+ const spent=S.exp.reduce((s,e)=>s+e.a,0);
+ $('fund').textContent='Ab tak kul mila ₹'+allGot+' − kharcha ₹'+spent+' = bacha ₹'+(allGot-spent);
+ $('tot').textContent='₹'+t;
+ $('ch').innerHTML=m.ch.map((c,i)=>`<div class="h" style="border:0;padding:3px 0"><div class="i">${esc(c.n)}</div><b>₹${c.a}</b><button class="g" onclick="delCh(${i})">✕</button></div>`).join('');
+ $('hl').innerHTML=S.houses.length?S.houses.map(h=>{const p=m.paid[h.id];return `<div class="h"><div class="i"><b>${esc(lbl(h))}</b><small>${esc(h.n)} · <span class="${p?'p':'u'}">${p?'Diya ✓':'Baaki ₹'+t}</span></small></div><button class="${p?'g':''}" onclick="tg(${h.id})">${p?'Wapas':'Paid'}</button><button style="background:#128c7e" onclick="wa(${h.id})">💬</button><button class="g" onclick="delH(${h.id})">✕</button></div>`}).join(''):'<p class="m">Abhi koi ghar nahi. Neeche se jodo.</p>';
+ $('ex').innerHTML=S.exp.map((e,i)=>`<div class="h" style="border:0;padding:3px 0"><div class="i">${esc(e.n)}</div><b>₹${e.a}</b><button class="g" onclick="delE(${i})">✕</button></div>`).join('');
+ save();
+}
+function addH(){const b=$('hb').value.trim().toUpperCase(),r=$('hr').value.trim();if(!b||!r)return alert('Block aur room number likho');
+ S.houses.push({id:Date.now(),b,r,n:$('hn').value.trim()||'Ji',p:$('hp').value.replace(/\D/g,'')});
+ ['hb','hr','hn','hp'].forEach(i=>$(i).value='');S.houses.sort((x,y)=>x.b.localeCompare(y.b)||x.r.localeCompare(y.r,undefined,{numeric:true}));render()}
+function delH(id){if(confirm('Ye ghar hatana hai?')){S.houses=S.houses.filter(h=>h.id!=id);render()}}
+function tg(id){const m=mon();m.paid[id]=!m.paid[id];render()}
+function addCh(){const n=$('cn').value.trim(),a=+$('ca').value;if(!n||!a)return;mon().ch.push({n,a});$('cn').value=$('ca').value='';render()}
+function delCh(i){mon().ch.splice(i,1);render()}
+function addE(){const n=$('en').value.trim(),a=+$('ea').value;if(!n||!a)return;S.exp.push({n,a});$('en').value=$('ea').value='';render()}
+function delE(i){S.exp.splice(i,1);render()}
+function msg(h){const m=mon(),t=tot(),d=m.ch.map(c=>c.n+' ₹'+c.a).join(', ');
+ return m.paid[h.id]?`Namaste ${h.n} ji 🙏\n${lbl(h)} ka ${mname()} ka maintenance ₹${t} (${d}) mil gaya. Dhanyavaad!`
+ :`Namaste ${h.n} ji 🙏\n${lbl(h)} ka ${mname()} ka maintenance ₹${t} (${d}) abhi baaki hai. Kripya jaldi de dein. Dhanyavaad!`}
+function link(h,txt){let p=h.p;if(p.length==10)p='91'+p;return 'https://wa.me/'+p+'?text='+encodeURIComponent(txt)}
+function wa(id){const h=S.houses.find(x=>x.id==id);if(!h.p)return alert('Is ghar ka number nahi dala');window.open(link(h,msg(h)),'_blank')}
+function qStart(mode){Q=S.houses.filter(h=>h.p&&(mode=='all'||!mon().paid[h.id]));qi=0;if(!Q.length){$('qi').textContent='Koi ghar nahi mila (number dala hai?)';return}qShow()}
+function qShow(){const el=$('qi');if(qi>=Q.length){el.textContent='✅ Sabko message chale gaye.';return}
+ const h=Q[qi];el.innerHTML=`<button class="big" onclick="qGo()">Agla bhejo: ${esc(lbl(h))} ${esc(h.n)} (${qi+1}/${Q.length})</button>`}
+function qGo(){const h=Q[qi];window.open(link(h,msg(h)),'_blank');qi++;qShow()}
+function grp(){const m=mon(),t=tot();const ok=S.houses.filter(h=>m.paid[h.id]),no=S.houses.filter(h=>!m.paid[h.id]);
+ let x=`🏘️ Colony Maintenance – ${mname()}\nPer ghar: ₹${t} (${m.ch.map(c=>c.n+' ₹'+c.a).join(', ')})\n\n✅ Paisa de diya (${ok.length}):\n${ok.map(lbl).join('\n')||'-'}\n\n⏳ Baaki (${no.length}):\n${no.map(lbl).join('\n')||'-'}\n\nJinhone nahi diya kripya jaldi dein 🙏`;
+ window.open('https://wa.me/?text='+encodeURIComponent(x),'_blank')}
+const d=new Date();M=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');$('mo').value=M;
+$('mo').onchange=e=>{M=e.target.value||M;render()};
+render();
+</script></body></html>
